@@ -25,10 +25,13 @@ else
   exit 1
 fi
 
-echo "Downloading Emby from $LINK"
-curl -L -o emby.deb $LINK
+BUILD_DIR=$(mktemp -d)
+pushd "${BUILD_DIR}"
+echo "Downloading Emby from ${LINK}"
+curl -L -o emby.deb ${LINK}
 ar x emby.deb data.tar.xz
 tar xf data.tar.xz
+
 
 # Put the ffmpeg binaries in the right place, ignoring missing files
 mv opt/emby-server/bin/ffmpeg /usr/bin/ffmpeg
@@ -40,3 +43,5 @@ mv opt/emby-server/extra/lib/libdrm.so.* /usr/lib/ || true
 mv opt/emby-server/extra/lib/libmfx.so.* /usr/lib/ || true
 mv opt/emby-server/extra/lib/libOpenCL.so.* /usr/lib/ || true
 
+popd
+rm -rf /tmp/*
