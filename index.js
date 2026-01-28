@@ -84,8 +84,7 @@ media.use("/auto/:channel", async (req, res, next) => {
       const ffmpeg = spawn("/usr/bin/ffmpeg", [
         "-nostats",
         "-hide_banner",
-        "-loglevel",
-        "warning",
+        "-loglevel", "warning",
         "-strict", "experimental",
         "-i", "pipe:",
         "-map", "0:v",
