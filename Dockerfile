@@ -5,7 +5,7 @@ ARG EMBY_VERSION="4.9.3.0"
 WORKDIR /home
 
 COPY package.json ./
-RUN yarn install --production
+RUN npm install --omit=dev
 COPY index.js ./
 COPY build.sh /tmp/build.sh 
 RUN /tmp/build.sh "${EMBY_VERSION}"
