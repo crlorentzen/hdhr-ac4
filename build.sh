@@ -13,7 +13,7 @@ fi
 
 # Download the correct Emby version for this architecture
 echo "Detected architecture: $(uname -m)"
-if [ "$LINK" ]; then
+if [ "${LINK:-}" ]; then
   echo "Overriding Emby release"
   LINK=$LINK
 elif [ "$(uname -m)" == "x86_64" ]; then
@@ -40,5 +40,3 @@ mv opt/emby-server/extra/lib/libdrm.so.* /usr/lib/ || true
 mv opt/emby-server/extra/lib/libmfx.so.* /usr/lib/ || true
 mv opt/emby-server/extra/lib/libOpenCL.so.* /usr/lib/ || true
 
-# Start the server
-node index.js
