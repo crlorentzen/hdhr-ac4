@@ -5,9 +5,10 @@ WORKDIR /home
 COPY package.json ./
 RUN yarn install --production
 COPY index.js ./
-COPY run.sh ./
+COPY build.sh /tmp/build.sh 
+RUN /tmp/build.sh
 
 EXPOSE 80
 EXPOSE 5004
 
-CMD ["bash", "run.sh"]
+CMD ["node", "index.js"]

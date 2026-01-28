@@ -1,10 +1,5 @@
 #!/bin/bash
-
-# Make sure the HDHR_IP environment variable is set
-if [ -z "$HDHR_IP" ]; then
-  echo "HDHR_IP environment variable not set"
-  exit 1
-fi
+EMBY_VERSION="4.8.10.0"
 
 # Download the correct Emby version for this architecture
 echo "Detected architecture: $(uname -m)"
@@ -12,9 +7,9 @@ if [ "$LINK" ]; then
   echo "Overriding Emby release"
   LINK=$LINK
 elif [ "$(uname -m)" == "x86_64" ]; then
-  LINK="https://github.com/MediaBrowser/Emby.Releases/releases/download/4.8.10.0/emby-server-deb_4.8.10.0_amd64.deb"
+  LINK="https://github.com/MediaBrowser/Emby.Releases/releases/download/${EMBY_VERSION}/emby-server-deb_${EMBY_VERSION}_amd64.deb"
 elif [ "$(uname -m)" == "aarch64" ]; then
-  LINK="https://github.com/MediaBrowser/Emby.Releases/releases/download/4.8.10.0/emby-server-deb_4.8.10.0_arm64.deb"
+  LINK="https://github.com/MediaBrowser/Emby.Releases/releases/download/${EMBY_VERSION}/emby-server-deb_${EMBY_VERSION}_arm64.deb"
 else
   echo "Unknown architecture. Set the LINK environment variable to a URL of a .deb file from https://github.com/MediaBrowser/Emby.Releases/releases"
   exit 1
