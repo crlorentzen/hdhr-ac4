@@ -1,5 +1,15 @@
 #!/bin/bash
-EMBY_VERSION="4.8.10.0"
+
+set -o nounset
+set -o pipefail
+set -x
+
+EMBY_VERSION="${1}"
+
+if [ -z ${EMBY_VERSION} ]; then
+  echo "No Emby Version Provided"
+  exit 1
+fi
 
 # Download the correct Emby version for this architecture
 echo "Detected architecture: $(uname -m)"
