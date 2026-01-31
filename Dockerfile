@@ -4,7 +4,7 @@ ARG EMBY_VERSION="4.9.3.0"
 
 WORKDIR /home
 
-COPY build.sh /tmp/build.sh 
+COPY build.sh emby*.deb /tmp/
 RUN /tmp/build.sh "${EMBY_VERSION}"
 
 COPY package.json ./
