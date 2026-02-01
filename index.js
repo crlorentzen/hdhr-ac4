@@ -1,10 +1,10 @@
-const express = require(`express`);
-const axios = require(`axios`);
-const { Transform } = require(`stream`);
-const { spawn } = require(`child_process`);
+const express = require("express");
+const axios = require("axios");
+const { Transform } = require("stream");
+const { spawn } = require("child_process");
 
 if (!process.env.HDHR_IP) {
-  console.log(`HDHR_IP environment variable not set`);
+  console.log("HDHR_IP environment variable not set");
   process.exit(1);
 }
 
@@ -12,32 +12,32 @@ const app = express();
 const media = express();
 
 const hdhr = process.env.HDHR_IP;
-let deviceId = `00ABCDEF`;
+let deviceId = "00ABCDEF";
 
-app.use(`/`, (req, res, next) => {
+app.use("/", (req, res, next) => {
   console.log(`App Request: ${req.url}`);
   next();
 });
 
-media.use(`/`, (req, res, next) => {
+media.use("/", (req, res, next) => {
   console.log(`Media Request: ${req.url}`);
   next();
 });
 
-app.use(`/`, async (req, res, next) => {
+app.use("/", async (req, res, next) => {
   try {
     const response = await axios.get(`http://${hdhr}${req.url}`, {
-      responseType: `stream`,
+      responseType: "stream",
     });
     
     // Copy over all headers
     Object.keys(response.headers).forEach(key => {
       // ...except the content-length header since we may change the length
-      if (!key.toLowerCase() === `content-length`) res.setHeader(key, response.headers[key]);
+      if (!key.toLowerCase() === "content-length") res.setHeader(key, response.headers[key]);
     });
     
     // Get the hostname from the request
-    const host = req.headers.host.split(`:`);
+    const host = req.headers.host.split(":");
     
     // Transform the stream
     const transform = new Transform({
@@ -46,13 +46,13 @@ app.use(`/`, async (req, res, next) => {
           chunk
           .toString()
           // Reverse the device ID
-          .replace(new RegExp(deviceId, `g`), deviceId.split(``).reverse().join(``))
+          .replace(new RegExp(deviceId, "g"), deviceId.split("").reverse().join(""))
           // Swap out the HDHR IP app requests for the emulated host
-          .replace(new RegExp(`${hdhr}(?!:)`, `g`), host[1] === `80` ? host[0] : host.join(`:`))
+          .replace(new RegExp(`${hdhr}(?!:)`, "g"), host[1] === "80" ? host[0] : host.join(":"))
           // Swap out the HDHR IP media requests
-          .replace(new RegExp(`${hdhr}:5004`, `g`), `${host[0]}:5004`)
+          .replace(new RegExp(`${hdhr}:5004`, "g"), `${host[0]}:5004`)
           // Switch AC4 to AC3
-          .replace(/AC4/g, `AC3`)
+          .replace(/AC4/g, "AC3")
         );
         callback();
       },
@@ -70,7 +70,7 @@ app.use((err, req, res, next) => {
   res.sendStatus(500);
 });
 
-media.use(`/auto/:channel`, async (req, res, next) => {
+media.use("/auto/:channel", async (req, res, next) => {
   // For cleanup
   let cleaned = false;
   let ffmpeg;
@@ -91,7 +91,7 @@ media.use(`/auto/:channel`, async (req, res, next) => {
     
     if (ffmpeg) {
       ffmpeg.stdin?.end();
-      ffmpeg.kill(`SIGKILL`); // SIGTERM can hang; ffmpeg is stubborn
+      ffmpeg.kill("SIGKILL"); // SIGTERM can hang; ffmpeg is stubborn
     }
     
     cleaned = true;
@@ -101,51 +101,62 @@ media.use(`/auto/:channel`, async (req, res, next) => {
     
     // Pipe the stream to the output
     stream = await axios.get(`http://${hdhr}:5004/auto/${req.params.channel}`, {
-      responseType: `stream`,
+      responseType: "stream",
       cancelToken: cancelSource.token,
     });
     
     if (stream.status === 200) {
-      ffmpeg = spawn(`/usr/bin/ffmpeg`, [
-        `-nostats`,
-        `-hide_banner`,
-        `-loglevel`, `warning`,
-        `-strict`, `experimental`,
-        `-i`, `pipe:`,
-        `-map`, `0:v`,
-        `-map`, `0:a`,
-        `-c:v`, `copy`,
-        `-ar`, `48000`,
-        `-c:a`, `eac3`,
-        `-c:d`, `copy`,
-        `-f`, `mpegts`,
-        `-`,
+      ffmpeg = spawn("/usr/bin/ffmpeg", [
+        "-nostats",
+        "-hide_banner",
+        "-loglevel", "warning",
+        "-strict", "experimental",
+        "-i", "pipe:",
+        "-map", "0:v",
+        "-map", "0:a",
+        "-c:v", "copy",
+        "-ar", "48000",
+        "-c:a", "eac3",
+        "-c:d", "copy",
+        "-f", "mpegts",
+        "-",
       ]);
       
       stream.data.pipe(ffmpeg.stdin);
       ffmpeg.stdout.pipe(res);
       
-      ffmpeg.on(`spawn`, () => {
+      ffmpeg.on("spawn", () => {
         console.debug(`Tuning channel ${req.params.channel}`);
       });
       
-      ffmpeg.stderr.on(`data`, d => {
+      // Handle pipe errors
+      ffmpeg.stdout.on("error", (err) => {
+        console.error("ffmpeg stdout error:", err);
+        cleanup("ffmpeg stdout error");
+      });
+      
+      ffmpeg.stdin.on("error", (err) => {
+        console.error("ffmpeg stdin error:", err);
+        cleanup("ffmpeg stdin error");
+      });
+      
+      ffmpeg.stderr.on("data", d => {
         console.warn(`[ffmpeg] ${d.toString().trim()}`);
       });
       
-      ffmpeg.on(`error`, err => {
+      ffmpeg.on("error", err => {
         cleanup(`ffmpeg exited ${err}`);
       });
       
-      ffmpeg.on(`close`, code => {
+      ffmpeg.on("close", code => {
         if (code !== 0) {
           cleanup(`ffmpeg exited: ${code}`);
         }
       });
       
-      req.on(`close`, () => cleanup(`Client disconnect`));
-      res.on(`close`, () => cleanup(`Server disconnect`));
-      res.on(`error`, () => cleanup(`Server error`));
+      req.on("close", () => cleanup("Client disconnect"));
+      res.on("close", () => cleanup("Server disconnect"));
+      res.on("error", () => cleanup("Server error"));
       
     } else {
       console.log(`Error: ${stream.status}`);
@@ -174,15 +185,15 @@ axios
   deviceId = response.data.DeviceID;
   console.log(`Device ID: ${deviceId}`);
   if (!deviceId) {
-    throw new Error(`No device ID found`);
+    throw new Error("No device ID found");
   }
 })
 .then(() => {
   app.listen(80, () => {
-    console.log(`App server listening on port 80`);
+    console.log("App server listening on port 80");
   });
   
   media.listen(5004, () => {
-    console.log(`Media server listening on port 5004`);
+    console.log("Media server listening on port 5004");
   });
 });
