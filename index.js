@@ -71,33 +71,33 @@ app.use((err, req, res, next) => {
 });
 
 media.use(`/auto/:channel`, async (req, res, next) => {
+  // For cleanup
+  let cleaned = false;
+  let ffmpeg;
+  let stream;
+  // Create a cancel token to end the stream when the client disconnects
+  const cancelSource = axios.CancelToken.source();
+  
+  const cleanup = (reason) => {
+    if (cleaned) return;
+    console.log(`Cleaning up (${reason}) channel ${req.params.channel}`);
+    
+    cancelSource.cancel();
+    
+    if (stream?.data) {
+      stream.data.unpipe();
+      stream.data.destroy();
+    }
+    
+    if (ffmpeg) {
+      ffmpeg.stdin?.end();
+      ffmpeg.kill(`SIGKILL`); // SIGTERM can hang; ffmpeg is stubborn
+    }
+    
+    cleaned = true;
+  };
+  
   try {
-    // For cleanup
-    let cleaned = false;
-    let ffmpeg;
-    let stream;
-    // Create a cancel token to end the stream when the client disconnects
-    const cancelSource = axios.CancelToken.source();
-    
-    const cleanup = (reason) => {
-      if (cleaned) return;
-      console.log(`Cleaning up (${reason}) channel ${req.params.channel}`);
-      
-      cancelSource.cancel();
-      
-      if (stream?.data) {
-        stream.data.unpipe();
-        stream.data.destroy();
-      }
-      
-      if (ffmpeg) {
-        ffmpeg.stdin?.end();
-        ffmpeg.kill(`SIGKILL`); // SIGTERM can hang; ffmpeg is stubborn
-      }
-
-      cleaned = true;
-    };
-    
     
     // Pipe the stream to the output
     stream = await axios.get(`http://${hdhr}:5004/auto/${req.params.channel}`, {
@@ -146,7 +146,7 @@ media.use(`/auto/:channel`, async (req, res, next) => {
       req.on(`close`, () => cleanup(`Client disconnect`));
       res.on(`close`, () => cleanup(`Server disconnect`));
       res.on(`error`, () => cleanup(`Server error`));
-
+      
     } else {
       console.log(`Error: ${stream.status}`);
       res.sendStatus(stream.status);
