@@ -98,7 +98,7 @@ media.use("/auto/:channel", async (req, res, next) => {
       ]);
 
       stream.data.pipe(ffmpeg.stdin);
-      ffmpeg.stdout.pipe(res);
+      ffmpeg.stderr.pipe(res);
 
       ffmpeg.on("spawn", () => {
         console.debug(`Tuning channel ${req.params.channel}`);
