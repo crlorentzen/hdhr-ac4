@@ -151,9 +151,14 @@ media.use(`/auto/:channel`, async (req, res, next) => {
       console.log(`Error: ${stream.status}`);
       res.sendStatus(stream.status);
     }
-  } catch (error) {
-    cleanup(`exception`);
-    next(error);
+  } catch (err) {
+    if (err.response) {
+      // err.response exists when server responded with 4xx/5xx
+      cleanup(`HDHomeRun returned ${err.response.status} ${err.response.statusText}`);
+    } else {
+      // Network error or timeout
+      cleanup(`Axios request failed: ${err.message}`);
+    }
   }
 });
 
