@@ -29,35 +29,35 @@ app.use("/", async (req, res, next) => {
     const response = await axios.get(`http://${hdhr}${req.url}`, {
       responseType: "stream",
     });
-
+    
     // Copy over all headers
     Object.keys(response.headers).forEach(key => {
       // ...except the content-length header since we may change the length
       if (!key.toLowerCase() === "content-length") res.setHeader(key, response.headers[key]);
     });
-
+    
     // Get the hostname from the request
     const host = req.headers.host.split(":");
-
+    
     // Transform the stream
     const transform = new Transform({
       transform(chunk, encoding, callback) {
         this.push(
           chunk
-            .toString()
-            // Reverse the device ID
-            .replace(new RegExp(deviceId, "g"), deviceId.split("").reverse().join(""))
-            // Swap out the HDHR IP app requests for the emulated host
-            .replace(new RegExp(`${hdhr}(?!:)`, "g"), host[1] === "80" ? host[0] : host.join(":"))
-            // Swap out the HDHR IP media requests
-            .replace(new RegExp(`${hdhr}:5004`, "g"), `${host[0]}:5004`)
-            // Switch AC4 to AC3
-            .replace(/AC4/g, "AC3")
+          .toString()
+          // Reverse the device ID
+          .replace(new RegExp(deviceId, "g"), deviceId.split("").reverse().join(""))
+          // Swap out the HDHR IP app requests for the emulated host
+          .replace(new RegExp(`${hdhr}(?!:)`, "g"), host[1] === "80" ? host[0] : host.join(":"))
+          // Swap out the HDHR IP media requests
+          .replace(new RegExp(`${hdhr}:5004`, "g"), `${host[0]}:5004`)
+          // Switch AC4 to AC3
+          .replace(/AC4/g, "AC3")
         );
         callback();
       },
     });
-
+    
     response.data.pipe(transform).pipe(res);
   } catch (error) {
     next(error);
@@ -74,7 +74,7 @@ media.use("/auto/:channel", async (req, res, next) => {
   try {
     // Create a cancel token to end the stream when the client disconnects
     const cancelSource = axios.CancelToken.source();
-
+    
     // Pipe the stream to the output
     const stream = await axios.get(`http://${hdhr}:5004/auto/${req.params.channel}`, {
       responseType: "stream",
@@ -96,19 +96,31 @@ media.use("/auto/:channel", async (req, res, next) => {
         "-f", "mpegts",
         "-",
       ]);
-
+      
       stream.data.pipe(ffmpeg.stdin);
       ffmpeg.stderr.pipe(res);
-
+      
       ffmpeg.on("spawn", () => {
         console.debug(`Tuning channel ${req.params.channel}`);
       });
-
+      
+      ffmpeg.on('error', err => {
+        console.error('ffmpeg failed to start:', err);
+        res.destroy(err);
+      });
+      
+      ffmpeg.on('close', code => {
+        if (code !== 0) {
+          console.error('ffmpeg exited with code', code);
+          cancelSource.cancel();
+        }
+      });
+      
       res.on("error", () => {
         console.log(`Response error. Stopping ${req.params.channel}`);
         cancelSource.cancel();
       });
-
+      
       res.on("close", () => {
         console.log(`Response disconnected. Stopping ${req.params.channel}`);
         cancelSource.cancel();
@@ -129,20 +141,20 @@ media.use((err, req, res, next) => {
 
 // Fetch the device id from the HDHR and then start the server
 axios
-  .get(`http://${hdhr}/discover.json`)
-  .then(response => {
-    deviceId = response.data.DeviceID;
-    console.log(`Device ID: ${deviceId}`);
-    if (!deviceId) {
-      throw new Error("No device ID found");
-    }
-  })
-  .then(() => {
-    app.listen(80, () => {
-      console.log("App server listening on port 80");
-    });
-
-    media.listen(5004, () => {
-      console.log("Media server listening on port 5004");
-    });
+.get(`http://${hdhr}/discover.json`)
+.then(response => {
+  deviceId = response.data.DeviceID;
+  console.log(`Device ID: ${deviceId}`);
+  if (!deviceId) {
+    throw new Error("No device ID found");
+  }
+})
+.then(() => {
+  app.listen(80, () => {
+    console.log("App server listening on port 80");
   });
+  
+  media.listen(5004, () => {
+    console.log("Media server listening on port 5004");
+  });
+});
