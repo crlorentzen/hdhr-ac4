@@ -12,6 +12,7 @@ services:
     build: .
     logging: *default-logging
     restart: unless-stopped
+    env_file: .env
     ports:
       - 5003:80
       - 5004:5004
