@@ -80,6 +80,7 @@ media.use("/auto/:channel", async (req, res, next) => {
   
   const cleanup = (reason) => {
     if (cleaned) return;
+    cleaned = true;
     console.log(`Cleaning up (${reason}) channel ${req.params.channel}`);
     
     cancelSource.cancel();
@@ -94,7 +95,9 @@ media.use("/auto/:channel", async (req, res, next) => {
       ffmpeg.kill("SIGKILL"); // SIGTERM can hang; ffmpeg is stubborn
     }
     
-    cleaned = true;
+    if (res) {
+      res.end();
+    }
   };
   
   try {
@@ -162,6 +165,7 @@ media.use("/auto/:channel", async (req, res, next) => {
       console.log(`Error: ${stream.status}`);
       res.sendStatus(stream.status);
     }
+
   } catch (err) {
     if (err.response) {
       // err.response exists when server responded with 4xx/5xx
@@ -172,28 +176,29 @@ media.use("/auto/:channel", async (req, res, next) => {
     }
   }
 });
-
-media.use((err, req, res, next) => {
-  console.log(err.stack);
-  res.sendStatus(500);
-});
-
-// Fetch the device id from the HDHR and then start the server
-axios
-.get(`http://${hdhr}/discover.json`)
-.then(response => {
-  deviceId = response.data.DeviceID;
-  console.log(`Device ID: ${deviceId}`);
-  if (!deviceId) {
-    throw new Error("No device ID found");
-  }
-})
-.then(() => {
-  app.listen(80, () => {
-    console.log("App server listening on port 80");
+  
+  media.use((err, req, res, next) => {
+    console.log(err.stack);
+    res.sendStatus(500);
   });
   
-  media.listen(5004, () => {
-    console.log("Media server listening on port 5004");
+  // Fetch the device id from the HDHR and then start the server
+  axios
+  .get(`http://${hdhr}/discover.json`)
+  .then(response => {
+    deviceId = response.data.DeviceID;
+    console.log(`Device ID: ${deviceId}`);
+    if (!deviceId) {
+      throw new Error("No device ID found");
+    }
+  })
+  .then(() => {
+    app.listen(80, () => {
+      console.log("App server listening on port 80");
+    });
+    
+    media.listen(5004, () => {
+      console.log("Media server listening on port 5004");
+    });
   });
-});
+  
