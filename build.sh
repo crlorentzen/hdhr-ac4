@@ -50,23 +50,38 @@ install_ffmpeg() {
   mv opt/emby-server/extra/lib/libOpenCL.so.* /usr/lib/ || true
 }
 
-# If LOCAL_EMBY_DEB or check for version
-LOCAL_EMBY_DEB_FILES=(/tmp/emby*.deb)
+
 LOCAL_EMBY_DEB=""
-if (( ${#LOCAL_EMBY_DEB_FILES[@]} == 1 )); then
-  LOCAL_EMBY_DEB=LOCAL_EMBY_DEB_FILES[0]
+orig_args="$@"
+orig_argc=$#
+
+# Check for local/cached emby*deb
+set -- /tmp/emby*.deb
+
+if [[ ! -e "$1" ]]; then
+    echo "No emby .deb files found"
+elif [[] "$#" -gt 1 ]]; then
+    echo "ERROR: Multiple emby .deb files found"
+    exit 1
 else
-  if [[] ! -z "${LOCAL_EMBY_DEB:-}" && "$#" != 1 ]] ; then
-    echo "Usage: $0 EMBY_VERSION";
-    exit 1;
-  else
-    get_emby $1
-  fi
+    echo "Found one file: $1"
+    LOCAL_EMBY_DEB=$1
+fi
+
+set -- "${orig_args}"
+if [[ ${orig_argc} -ne "$#" ]]; then
+  echo "argument restoration failed"
+  exit 1
+fi
+
+# If no LOCAL_EMBY_DEB, get_emby
+if [[ -z "${LOCAL_EMBY_DEB}:-" ]]; then
+  get_emby $1
 fi
 
 BUILD_DIR=$(mktemp -d)
 pushd "${BUILD_DIR}"
-LOCAL_EMBY_DEB=$(ls -1 /tmp/emby*.deb)
+LOCAL_EMBY_DEB=(/tmp/emby*.deb)
 
 install_ffmpeg ${LOCAL_EMBY_DEB}
 
