@@ -1,0 +1,17 @@
+name: testing
+
+# Define a reusable logging configuration
+x-logging: &default-logging
+  driver: "local"
+  options:
+    max-size: "10m"
+    max-file: "3"
+
+services:
+  hdhr-ac4:
+    build: .
+    logging: *default-logging
+    restart: unless-stopped
+    ports:
+      - 5003:80
+      - 5004:5004
