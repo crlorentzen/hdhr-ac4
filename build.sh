@@ -75,7 +75,7 @@ if [[ ${orig_argc} -ne "$#" ]]; then
 fi
 
 # If no LOCAL_EMBY_DEB, get_emby
-if [[ -z "${LOCAL_EMBY_DEB}:-" ]]; then
+if [[ -z "${LOCAL_EMBY_DEB:-}" ]]; then
   get_emby $1
 fi
 
